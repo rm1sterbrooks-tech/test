@@ -8,7 +8,7 @@ from app.game.logic import TicTacToe
 from app.game.ai import AIPlayer
 from app.game.promocode import generate_promocode
 from app.telegram.notifier import notify_telegram
-from app.models.schemas import MoveRequest, GameResponse
+from app.models.schemas import MoveRequest, GameResponse, LinkRequest, LinkResponse
 from app.storage.redis_client import get_storage
 from app.core.limiter import limiter
 
@@ -301,4 +301,29 @@ async def get_game_status(request: Request, game_id: str):
             status_code=500,
             detail="Не удалось получить статус игры. Попробуйте позже."
         )
+
+@router.post("/telegram/link")
+async def link_telegram(request: LinkRequest):
+    """Привязать Telegram chat_id к временному токену"""
+    try:
+        storage = await get_storage()
+        await storage.save_link_token(request.token, request.chat_id)
+        logger.info(f"Telegram привязан: {request.token} -> {request.chat_id}")
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Ошибка при привязке Telegram: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Не удалось привязать Telegram")
+
+@router.get("/telegram/check/{token}", response_model=LinkResponse)
+async def check_link(token: str):
+    """Проверить, привязан ли Telegram к токену"""
+    try:
+        storage = await get_storage()
+        chat_id = await storage.get_chat_id_by_token(token)
+        if chat_id:
+            return LinkResponse(chat_id=chat_id, linked=True)
+        return LinkResponse(linked=False)
+    except Exception as e:
+        logger.error(f"Ошибка при проверке привязки: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Ошибка при проверке привязки")
 

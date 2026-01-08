@@ -17,4 +17,11 @@ class GameResponse(BaseModel):
     winner: Optional[str] = None
     promocode: Optional[str] = None
     message: Optional[str] = None
+class LinkRequest(BaseModel):
+    token: str
+    chat_id: str
 
+
+class LinkResponse(BaseModel):
+    chat_id: Optional[str] = None
+    linked: bool

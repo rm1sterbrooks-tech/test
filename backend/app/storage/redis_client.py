@@ -115,6 +115,32 @@ class RedisStorage:
             logger.error(f"Ошибка удаления игры из Redis: {e}", exc_info=True)
             return False
     
+    async def save_link_token(self, token: str, chat_id: str) -> bool:
+        """Сохранить временный токен для привязки Telegram"""
+        try:
+            client = await self._get_client()
+            key = f"link_token:{token}"
+            # Токен живет 10 минут
+            await client.setex(key, 600, chat_id.encode('utf-8'))
+            logger.debug(f"Токен привязки сохранен: {token} -> {chat_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка сохранения токена привязки: {e}", exc_info=True)
+            return False
+            
+    async def get_chat_id_by_token(self, token: str) -> Optional[str]:
+        """Получить chat_id по токену привязки"""
+        try:
+            client = await self._get_client()
+            key = f"link_token:{token}"
+            data = await client.get(key)
+            if data:
+                return data.decode('utf-8')
+            return None
+        except Exception as e:
+            logger.error(f"Ошибка получения chat_id по токену: {e}", exc_info=True)
+            return None
+    
     async def close(self):
         """Закрыть соединение с Redis"""
         if self._client:

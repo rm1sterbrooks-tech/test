@@ -89,14 +89,37 @@ async def start_command(update, context):
     # Получаем параметр из команды (если есть)
     start_param = context.args[0] if context.args else None
     
+    linked_successfully = False
+    if start_param:
+        # Пытаемся привязать через Backend
+        backend_url = os.getenv("BACKEND_URL", "https://tictactoe-backend-v2.onrender.com")
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.post(
+                    f"{backend_url}/api/telegram/link",
+                    json={"token": start_param, "chat_id": chat_id}
+                )
+                if response.status_code == 200:
+                    linked_successfully = True
+                    print(f"[Telegram] Успешно привязано: {start_param} -> {chat_id}")
+        except Exception as e:
+            print(f"[Telegram] Ошибка привязки: {e}")
+
     message = f"Привет, {username}! 👋\n\n"
     message += "🎮 Добро пожаловать в игру 'Крестики-нолики'!\n\n"
-    message += f"📱 Твой Chat ID: `{chat_id}`\n\n"
-    message += "💡 Не волнуйся, это нужно сделать только один раз! 😊\n\n"
-    message += "📝 Что делать дальше:\n"
-    message += "1. Скопируй свой Chat ID выше\n"
-    message += "2. Вставь Chat ID в поле ввода в игре\n"
-    message += "3. Начни играть и получай уведомления! 🎉\n\n"
+    
+    if linked_successfully:
+        message += "✅ **Аккаунт успешно привязан!**\n\n"
+        message += "Теперь ты можешь вернуться в игру, и твой Chat ID подставится автоматически. 🎉\n\n"
+    else:
+        message += f"📱 Твой Chat ID: `{chat_id}`\n\n"
+        message += "💡 Не волнуйся, это нужно сделать только один раз! 😊\n\n"
+        message += "📝 Что делать дальше:\n"
+        message += "1. Скопируй свой Chat ID выше\n"
+        message += "2. Вставь Chat ID в поле ввода в игре\n"
+        message += "3. Начни играть и получай уведомления! 🎉\n\n"
+    
     message += "✨ После первого ввода Chat ID сохранится автоматически, и больше не нужно будет его вводить! 🎊\n\n"
     message += "Удачи в игре! 🍀"
     

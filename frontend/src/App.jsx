@@ -17,6 +17,7 @@ function App() {
   const [chatId, setChatId] = useState(localStorage.getItem('chatId') || '')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [linkToken, setLinkToken] = useState(null)
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -176,7 +177,40 @@ function App() {
 
   useEffect(() => {
     startNewGame()
+
+    // Генерируем токен для привязки Telegram, если chatId еще нет
+    if (!chatId) {
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      setLinkToken(token)
+    }
   }, [])
+
+  // Поллинг для автоматической привязки Telegram
+  useEffect(() => {
+    let pollInterval = null
+
+    if (linkToken && !chatId) {
+      pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/telegram/check/${linkToken}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.linked && data.chat_id) {
+              setChatId(data.chat_id)
+              localStorage.setItem('chatId', data.chat_id)
+              clearInterval(pollInterval)
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка при проверке привязки Telegram:', error)
+        }
+      }, 2000)
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [linkToken, chatId, API_BASE_URL])
 
   return (
     <div className="app">
@@ -190,7 +224,7 @@ function App() {
             <div className="chat-id-input">
               <label>📱 Для получения уведомлений в Telegram:</label>
               <a
-                href="https://t.me/TicTacToeforDiscountBot?start=game"
+                href={`https://t.me/TicTacToeforDiscountBot?start=${linkToken || 'game'}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="telegram-bot-link"

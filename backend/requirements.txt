@@ -1,0 +1,20 @@
+# Backend API dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+httpx>=0.25.0
+
+# Хранилище данных
+redis>=5.0.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Мониторинг
+prometheus-fastapi-instrumentator>=6.0.0
+
+# Для разработки
+pytest>=7.4.0
+pytest-cov>=4.1.0
+

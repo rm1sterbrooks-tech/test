@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: tictactoe-frontend
+    env: node
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm run preview
+    envVars:
+      - key: VITE_API_URL
+        value: https://tictactoe-backend.onrender.com/api
+
+  - type: web
+    name: tictactoe-backend
+    env: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  - type: worker
+    name: tictactoe-bot
+    env: python
+    buildCommand: cd telegram-bot && pip install -r requirements.txt
+    startCommand: cd telegram-bot && python bot/main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false

@@ -1,0 +1,52 @@
+/* Цветовая палитра для женской аудитории 25-40 лет */
+:root {
+  --primary-pink: #FFB6C1;      /* Light Pink */
+  --primary-lavender: #E6E6FA;  /* Lavender */
+  --accent-peach: #FFDAB9;       /* Peach Puff */
+  --accent-khaki: #F0E68C;      /* Khaki */
+  --background-cornsilk: #FFF8DC; /* Cornsilk */
+  --background-beige: #F5F5DC;   /* Beige */
+  --text-dark: #4A4A4A;
+  --text-medium: #6B6B6B;
+  --shadow-soft: rgba(255, 182, 193, 0.3);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  background: linear-gradient(135deg, var(--background-cornsilk) 0%, var(--background-beige) 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-dark);
+}
+
+#root {
+  width: 100%;
+  max-width: 600px;
+  padding: 20px;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+  #root {
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 5px;
+  }
+  
+  body {
+    padding: 0;
+  }
+}
+

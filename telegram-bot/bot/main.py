@@ -49,6 +49,14 @@ async def send_message(chat_id: str, message: str):
     except TelegramError as e:
         print(f"[Telegram] Ошибка отправки: {e}")
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "TicTacToe Telegram Bot is running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "bot_configured": bot is not None}
+
 @app.post("/notify/victory")
 async def notify_victory(request: NotificationRequest):
     """Уведомление о победе"""
@@ -75,10 +83,6 @@ async def notify_draw(request: NotificationRequest):
     await send_message(request.chat_id, message)
     
     return {"status": "sent", "message": message}
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "bot_configured": bot is not None}
 
 # Обработчики команд Telegram
 async def start_command(update, context):
@@ -195,4 +199,3 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8001))
     print(f"[FastAPI] Запуск сервера на порту {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
-

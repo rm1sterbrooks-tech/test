@@ -11,82 +11,37 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 async def notify_telegram(chat_id: str, message_type: str, promocode: str = None):
-    """Отправка уведомления через Telegram-бот API"""
-    bot_url = os.getenv("TELEGRAM_BOT_URL", "http://localhost:8001")
+    """Отправка уведомления напрямую через Telegram Bot API"""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     
+    if not bot_token:
+        logger.warning("TELEGRAM_BOT_TOKEN не настроен. Уведомление не отправлено.")
+        return
+        
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    
+    if message_type == "victory":
+        text = f"🎉 Победа! Промокод выдан: {promocode}"
+    elif message_type == "defeat":
+        text = "😔 Проигрыш"
+    elif message_type == "draw":
+        text = "🤝 Ничья"
+    else:
+        text = f"Уведомление: {message_type}"
+
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            if message_type == "victory":
-                message = f"🎉 Победа! Промокод выдан: {promocode}"
-                await client.post(
-                    f"{bot_url}/notify/victory",
-                    json={"chat_id": chat_id, "promocode": promocode}
-                )
-                logger.info(
-                    f"Отправлено уведомление о победе",
-                    extra={
-                        "chat_id": chat_id,
-                        "message_type": "victory",
-                        "promocode": promocode
-                    }
-                )
-            elif message_type == "defeat":
-                message = "😔 Проигрыш"
-                await client.post(
-                    f"{bot_url}/notify/defeat",
-                    json={"chat_id": chat_id}
-                )
-                logger.info(
-                    f"Отправлено уведомление о проигрыше",
-                    extra={
-                        "chat_id": chat_id,
-                        "message_type": "defeat"
-                    }
-                )
-            elif message_type == "draw":
-                message = "🤝 Ничья"
-                await client.post(
-                    f"{bot_url}/notify/draw",
-                    json={"chat_id": chat_id}
-                )
-                logger.info(
-                    f"Отправлено уведомление о ничьей",
-                    extra={
-                        "chat_id": chat_id,
-                        "message_type": "draw"
-                    }
-                )
-    except httpx.TimeoutException as e:
-        logger.warning(
-            f"Таймаут при отправке уведомления в Telegram",
-            extra={
-                "chat_id": chat_id,
-                "message_type": message_type,
-                "error": "timeout",
-                "error_message": str(e)
-            }
-        )
-    except httpx.RequestError as e:
-        logger.error(
-            f"Ошибка подключения к Telegram боту",
-            extra={
-                "chat_id": chat_id,
-                "message_type": message_type,
-                "error": "request_error",
-                "error_message": str(e),
-                "bot_url": bot_url
-            },
-            exc_info=True
-        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML"
+                }
+            )
+            response.raise_for_status()
+            logger.info(f"Отправлено уведомление в Telegram: {message_type}")
+            
     except Exception as e:
-        logger.error(
-            f"Ошибка отправки уведомления в Telegram",
-            extra={
-                "chat_id": chat_id,
-                "message_type": message_type,
-                "error": "unknown_error",
-                "error_message": str(e)
-            },
-            exc_info=True
-        )
+        logger.error(f"Ошибка отправки уведомления в Telegram: {e}", exc_info=True)
 

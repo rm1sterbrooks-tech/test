@@ -16,6 +16,7 @@ function App() {
   const [gameMessage, setGameMessage] = useState('')
   const [chatId, setChatId] = useState(localStorage.getItem('chatId') || '')
   const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [linkToken, setLinkToken] = useState(sessionStorage.getItem('linkToken') || null)
 
   const API_BASE_URL = 'https://tictactoe-backend-v2.onrender.com/api'

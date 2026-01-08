@@ -143,10 +143,12 @@ async def make_move(request: Request, move_request: MoveRequest):
             await _save_game(game)  # Сохраняем финальное состояние
             
             # Отправка уведомления в Telegram при победе
+            print(f"[Routes] Victory! Chat ID in request: {move_request.chat_id}")
             if move_request.chat_id:
                 try:
                     await notify_telegram(move_request.chat_id, "victory", promocode)
                 except Exception as e:
+                    print(f"[Routes] Error calling notify_telegram: {e}")
                     logger.warning(f"Не удалось отправить уведомление в Telegram: {e}")
                     # Не прерываем выполнение, если уведомление не отправилось
             
@@ -214,10 +216,12 @@ async def make_move(request: Request, move_request: MoveRequest):
                     await _save_game(game)  # Сохраняем финальное состояние
                     
                     # Отправка уведомления в Telegram при проигрыше
+                    print(f"[Routes] AI Victory! Chat ID in request: {move_request.chat_id}")
                     if move_request.chat_id:
                         try:
                             await notify_telegram(move_request.chat_id, "defeat")
                         except Exception as e:
+                            print(f"[Routes] Error calling notify_telegram (defeat): {e}")
                             logger.warning(f"Не удалось отправить уведомление в Telegram: {e}")
                     
                     logger.info(
@@ -236,10 +240,12 @@ async def make_move(request: Request, move_request: MoveRequest):
                     game.status = 'finished'
                     await _save_game(game)  # Сохраняем финальное состояние
                     
+                    print(f"[Routes] Draw! Chat ID in request: {move_request.chat_id}")
                     if move_request.chat_id:
                         try:
                             await notify_telegram(move_request.chat_id, "draw")
                         except Exception as e:
+                            print(f"[Routes] Error calling notify_telegram (draw): {e}")
                             logger.warning(f"Не удалось отправить уведомление в Telegram: {e}")
                     
                     logger.info(

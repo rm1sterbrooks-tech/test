@@ -15,9 +15,11 @@ async def notify_telegram(chat_id: str, message_type: str, promocode: str = None
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     
     if not bot_token:
+        print(f"[Notifier] ERROR: TELEGRAM_BOT_TOKEN is not set!")
         logger.warning("TELEGRAM_BOT_TOKEN не настроен. Уведомление не отправлено.")
         return
         
+    print(f"[Notifier] Sending {message_type} to {chat_id}...")
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     
     if message_type == "victory":
@@ -39,9 +41,11 @@ async def notify_telegram(chat_id: str, message_type: str, promocode: str = None
                     "parse_mode": "HTML"
                 }
             )
+            print(f"[Notifier] Telegram API response: {response.status_code}")
             response.raise_for_status()
             logger.info(f"Отправлено уведомление в Telegram: {message_type}")
             
     except Exception as e:
+        print(f"[Notifier] FAILED to send notification: {e}")
         logger.error(f"Ошибка отправки уведомления в Telegram: {e}", exc_info=True)
 

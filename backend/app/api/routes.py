@@ -15,8 +15,9 @@ from app.core.limiter import limiter
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Fallback хранилище в памяти (если Redis недоступен)
+# Fallback хранилища в памяти
 active_games_fallback = {}
+active_tokens_fallback = {} # Для токенов привязки Telegram
 
 # Флаг использования Redis
 USE_REDIS = os.getenv("USE_REDIS", "true").lower() == "true"
@@ -306,9 +307,18 @@ async def get_game_status(request: Request, game_id: str):
 async def link_telegram(request: LinkRequest):
     """Привязать Telegram chat_id к временному токену"""
     try:
-        storage = await get_storage()
-        await storage.save_link_token(request.token, request.chat_id)
-        logger.info(f"Telegram привязан: {request.token} -> {request.chat_id}")
+        if USE_REDIS:
+            try:
+                storage = await get_storage()
+                await storage.save_link_token(request.token, request.chat_id)
+                logger.info(f"Telegram привязан (Redis): {request.token} -> {request.chat_id}")
+                return {"status": "ok"}
+            except Exception as e:
+                logger.warning(f"Ошибка Redis при привязке, используем fallback: {e}")
+        
+        # Fallback или если Redis отключен
+        active_tokens_fallback[request.token] = request.chat_id
+        logger.info(f"Telegram привязан (Fallback): {request.token} -> {request.chat_id}")
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Ошибка при привязке Telegram: {e}", exc_info=True)
@@ -318,10 +328,20 @@ async def link_telegram(request: LinkRequest):
 async def check_link(token: str):
     """Проверить, привязан ли Telegram к токену"""
     try:
-        storage = await get_storage()
-        chat_id = await storage.get_chat_id_by_token(token)
-        if chat_id:
+        if USE_REDIS:
+            try:
+                storage = await get_storage()
+                chat_id = await storage.get_chat_id_by_token(token)
+                if chat_id:
+                    return LinkResponse(chat_id=chat_id, linked=True)
+            except Exception as e:
+                logger.warning(f"Ошибка Redis при проверке, пробуем fallback: {e}")
+        
+        # Проверка в fallback
+        if token in active_tokens_fallback:
+            chat_id = active_tokens_fallback[token]
             return LinkResponse(chat_id=chat_id, linked=True)
+            
         return LinkResponse(linked=False)
     except Exception as e:
         logger.error(f"Ошибка при проверке привязки: {e}", exc_info=True)

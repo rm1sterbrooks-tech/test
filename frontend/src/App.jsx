@@ -16,10 +16,9 @@ function App() {
   const [gameMessage, setGameMessage] = useState('')
   const [chatId, setChatId] = useState(localStorage.getItem('chatId') || '')
   const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [linkToken, setLinkToken] = useState(null)
+  const [linkToken, setLinkToken] = useState(sessionStorage.getItem('linkToken') || null)
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+  const API_BASE_URL = 'https://tictactoe-backend-v2.onrender.com/api'
 
   const startNewGame = async () => {
     setLoading(true)
@@ -178,37 +177,45 @@ function App() {
   useEffect(() => {
     startNewGame()
 
-    // Генерируем токен для привязки Telegram, если chatId еще нет
-    if (!chatId) {
+    // Генерируем токен для привязки Telegram, если его еще нет
+    if (!chatId && !linkToken) {
       const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
       setLinkToken(token)
+      sessionStorage.setItem('linkToken', token)
     }
-  }, [])
+  }, [chatId, linkToken])
 
   // Поллинг для автоматической привязки Telegram
   useEffect(() => {
     let pollInterval = null
 
     if (linkToken && !chatId) {
+      console.log(`[Telegram] Начинаем поллинг для токена: ${linkToken}`)
       pollInterval = setInterval(async () => {
         try {
           const response = await fetch(`${API_BASE_URL}/telegram/check/${linkToken}`)
           if (response.ok) {
             const data = await response.json()
             if (data.linked && data.chat_id) {
+              console.log(`[Telegram] Успешно привязано! Chat ID: ${data.chat_id}`)
               setChatId(data.chat_id)
               localStorage.setItem('chatId', data.chat_id)
+              sessionStorage.removeItem('linkToken')
+              setLinkToken(null)
               clearInterval(pollInterval)
             }
           }
         } catch (error) {
           console.error('Ошибка при проверке привязки Telegram:', error)
         }
-      }, 2000)
+      }, 3000) // Увеличим интервал до 3 секунд
     }
 
     return () => {
-      if (pollInterval) clearInterval(pollInterval)
+      if (pollInterval) {
+        console.log('[Telegram] Остановка поллинга')
+        clearInterval(pollInterval)
+      }
     }
   }, [linkToken, chatId, API_BASE_URL])
 

@@ -181,7 +181,7 @@ def run_bot_polling():
         return
     
     print("[Telegram Bot] Запуск polling...")
-    bot_application.run_polling(allowed_updates=["message", "callback_query"])
+    bot_application.run_polling(allowed_updates=["message", "callback_query"], stop_signals=False)
 
 if __name__ == "__main__":
     import uvicorn

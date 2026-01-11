@@ -17,13 +17,10 @@ import httpx
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-# app = FastAPI(title="Telegram Bot API")
-# Перенесено ниже в lifespan
-
+# Инициализация бота (будет использована в lifespan)
 bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-# Логирование для отладки
 print(f"[Telegram Bot] Token loaded: {'Yes' if bot_token and bot_token != 'your_bot_token_here' else 'No'}")
 print(f"[Telegram Bot] Chat ID loaded: {chat_id if chat_id and chat_id != 'your_chat_id_here' else 'No'}")
 
@@ -32,8 +29,37 @@ bot_application = None
 
 if bot_token:
     bot = Bot(token=bot_token)
-    # Создаем Application для обработки команд
     bot_application = Application.builder().token(bot_token).build()
+
+def setup_bot_handlers():
+    """Настройка обработчиков команд бота"""
+    if not bot_application:
+        print("[Telegram Bot] Бот не инициализирован, обработчики не добавлены")
+        return
+    
+    bot_application.add_handler(CommandHandler("start", start_command))
+    bot_application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("[Telegram Bot] Обработчики команд добавлены")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Управление жизненным циклом приложения (запуск и остановка бота)"""
+    if bot_application:
+        setup_bot_handlers()
+        await bot_application.initialize()
+        await bot_application.start()
+        await bot_application.updater.start_polling(allowed_updates=["message", "callback_query"])
+        print("[Telegram Bot] Бот запущен через lifespan")
+    
+    yield
+    
+    if bot_application:
+        await bot_application.updater.stop()
+        await bot_application.stop()
+        await bot_application.shutdown()
+        print("[Telegram Bot] Бот остановлен")
+
+app = FastAPI(title="Telegram Bot API", lifespan=lifespan)
 
 class NotificationRequest(BaseModel):
     chat_id: str
@@ -161,43 +187,9 @@ async def handle_message(update, context):
     )
     print(f"[Telegram] Пользователь {username} (ID: {chat_id}) отправил сообщение")
 
-def setup_bot_handlers():
-    """Настройка обработчиков команд бота"""
-    if not bot_application:
-        print("[Telegram Bot] Бот не инициализирован, обработчики не добавлены")
-        return
-    
-    # Добавляем обработчик команды /start
-    bot_application.add_handler(CommandHandler("start", start_command))
-    
-    # Добавляем обработчик обычных сообщений
-    bot_application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    print("[Telegram Bot] Обработчики команд добавлены")
+# Обработчики перенесены выше
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Управление жизненным циклом приложения (запуск и остановка бота)"""
-    if bot_application:
-        # Настраиваем обработчики
-        setup_bot_handlers()
-        
-        # Инициализируем и запускаем бота
-        await bot_application.initialize()
-        await bot_application.start()
-        await bot_application.updater.start_polling(allowed_updates=["message", "callback_query"])
-        print("[Telegram Bot] Бот запущен через lifespan")
-    
-    yield
-    
-    if bot_application:
-        # Останавливаем бота при выключении сервера
-        await bot_application.updater.stop()
-        await bot_application.stop()
-        await bot_application.shutdown()
-        print("[Telegram Bot] Бот остановлен")
-
-app = FastAPI(title="Telegram Bot API", lifespan=lifespan)
+# Lifespan и app перенесены выше
 
 if __name__ == "__main__":
     import uvicorn

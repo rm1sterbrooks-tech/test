@@ -10,14 +10,15 @@ import os
 import asyncio
 from dotenv import load_dotenv
 from pathlib import Path
-import threading
+from contextlib import asynccontextmanager
 import httpx
 
 # Загружаем .env из директории telegram-bot
 env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-app = FastAPI(title="Telegram Bot API")
+# app = FastAPI(title="Telegram Bot API")
+# Перенесено ниже в lifespan
 
 bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -174,28 +175,34 @@ def setup_bot_handlers():
     
     print("[Telegram Bot] Обработчики команд добавлены")
 
-def run_bot_polling():
-    """Запуск бота в режиме polling"""
-    if not bot_application:
-        print("[Telegram Bot] Бот не инициализирован, polling не запущен")
-        return
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Управление жизненным циклом приложения (запуск и остановка бота)"""
+    if bot_application:
+        # Настраиваем обработчики
+        setup_bot_handlers()
+        
+        # Инициализируем и запускаем бота
+        await bot_application.initialize()
+        await bot_application.start()
+        await bot_application.updater.start_polling(allowed_updates=["message", "callback_query"])
+        print("[Telegram Bot] Бот запущен через lifespan")
     
-    print("[Telegram Bot] Запуск polling...")
-    bot_application.run_polling(allowed_updates=["message", "callback_query"], stop_signals=False)
+    yield
+    
+    if bot_application:
+        # Останавливаем бота при выключении сервера
+        await bot_application.updater.stop()
+        await bot_application.stop()
+        await bot_application.shutdown()
+        print("[Telegram Bot] Бот остановлен")
+
+app = FastAPI(title="Telegram Bot API", lifespan=lifespan)
 
 if __name__ == "__main__":
     import uvicorn
     
-    # Настраиваем обработчики бота
-    setup_bot_handlers()
-    
-    # Запускаем бота в отдельном потоке
-    if bot_application:
-        bot_thread = threading.Thread(target=run_bot_polling, daemon=True)
-        bot_thread.start()
-        print("[Telegram Bot] Бот запущен в фоновом режиме")
-    
-    # Запускаем FastAPI сервер
+    # Запускаем FastAPI сервер (бот запустится автоматически через lifespan)
     port = int(os.getenv("PORT", 8001))
     print(f"[FastAPI] Запуск сервера на порту {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
